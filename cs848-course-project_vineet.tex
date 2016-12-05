@@ -21,7 +21,7 @@
 \begin{document}
 
 
-\title{Redynis: Traffic-aware dynamic re-partitioning\\for a distributed key-value store}
+\title{Redynis: Traffic-aware dynamic repartitioning\\for a distributed key-value store}
 \subtitle{CS848-001 (Fall 2016) Course Project}
 
 
@@ -37,11 +37,11 @@
 
 \maketitle
 \begin{abstract}
-Most modern data stores tend to be distributed, to enable the scaling of the data across multiple instances of commodity hardware. Although this ensures a near unlimited potential for storage, the data access is not always ideally partitioned, and the cost of a network round-trip may cause a degradation of end-user experience with respect to response latency. The problem attempted to be solved is to bring the data objects closer to the frequent sources of request using a dynamic re-partitioning algorithm. This is important if the objective is to mitigate the overhead of network latency, and especially so if the partitions are widely geo-distributed. The intention is to bring these features to an existing distributed key-value store product, Redis\cite{redis-website}.\\
+Most modern data stores tend to be distributed, to enable the scaling of the data across multiple instances of commodity hardware. Although this ensures a near unlimited potential for storage, the data access is not always ideally partitioned, and the cost of a network round-trip may cause a degradation of end-user experience with respect to response latency. The problem attempted to be solved is to bring the data objects closer to the frequent sources of request using a dynamic repartitioning algorithm. This is important if the objective is to mitigate the overhead of network latency, and especially so if the partitions are widely geo-distributed. The intention is to bring these features to an existing distributed key-value store product, Redis\cite{redis-website}.\\
 \end{abstract}
 
 
-\keywords{dynamic re-partitioning, key-value store, data placement}\\
+\keywords{dynamic repartitioning, key-value store, data placement}\\
 
 
 \section{Introduction}
@@ -51,27 +51,31 @@ Redynis takes its roots in intelligent data placement, and in essence, attempts 
 
 The motivation of Redynis is three-fold:
 \begin{itemize}
-	\item Reduce the network latency by dynamic re-partitioning of the cached data based on usage heuristics. I.e. maximize the number of cache-hits on the local cache.
+	\item Reduce the network latency by dynamic repartitioning of the cached data based on usage heuristics. I.e. maximize the number of cache-hits on the local cache.
 	\item Leveraging the same usage heuristics to selectively purge stale data.
 	\item Optimizations need to be non-blocking so as to not interfere with the regular execution of fetch requests.
 \end{itemize}
 
 Redynis is built with the purpose of implementing these features to reduce cross-node request latency.
 
-\section{Similar Work}
-Attempts to identify ideal methods to dynamically partition data do exist. Two of them, SWORD\cite{quamar2013sword} and AdaptCache\cite{asad2016adaptcache}, rely on hyper-graphs to model the workload, and base the re-partitioning decisions off this model. SCHISM\cite{curino2010schism} relies on graph partitioning to find a predicate-based explanation of the partitioning strategy. E-store\cite{taft2014store} relies of a strategy of skewed placement, where the data placement decision is taken based on usage heuristics.\\
-
-The system proposed is implemented in a manner that avoids expensive graph traversals and is able to log usage heuristics and perform a usage analysis for a key in constant time. In addition, since Redis is widely used in a lot of industrial tech stacks\cite{redis-popularity}, it makes for an easier deployment strategy, compared to switching over to a new system. Also included is a web API for ease of data access, and minimize the overhead of having to implement a language specific client to interact with the caching layer.\\
 
 \section{Problem Statement}
-The aim is to solve the problem of having to make frequency remote requests for cache misses need to be solved in a manner that allows for a more usage-heuristic based dynamic re-partitioning of the tuples, and build a framework that intelligently re-partitions tuples for a distributed key-value store.\\
+The aim is to solve the problem of having to make frequency remote requests for cache misses need to be solved in a manner that allows for a more usage-heuristic based dynamic repartitioning of the tuples, and build a framework that intelligently repartitions tuples for a distributed key-value store.\\
+
+
+\section{Similar Work}
+This section lists the previous work done to solve the same or a similar problem to the one described above.\\
+
+Attempts to identify ideal methods to dynamically partition data already exist. Two of them, SWORD\cite{quamar2013sword} and AdaptCache\cite{asad2016adaptcache}, rely on hyper-graphs to model the database workloads, and base the repartitioning decisions off this model. SCHISM\cite{curino2010schism} relies on graph partitioning to find a predicate-based explanation for the ideal partitioning strategy. E-store\cite{taft2014store} relies of a strategy of skewed placement, where the data placement decision is taken based on usage heuristics, while avoiding replication. \\
+
+The system proposed is implemented in a manner that avoids expensive graph traversals and is able to log usage heuristics and perform a usage analysis for a key in constant time. In addition, since Redis is widely used in a lot of industrial tech stacks\cite{redis-popularity}, it makes for an easier deployment strategy, compared to switching over to a new system. Also included, is a web API for ease of data access, which minimizes the overhead of having to implement a language specific client to interact with the caching layer.\\
 
 
 \section{Model Assumptions}
-The following assumptions are made, with respect to the system architecture and the problem being solved:
+The following assumptions are made, with respect to the system architecture and the problem statement:
 \begin{itemize}
 	\item The load balancing layer on the application servers hosting the web-services ensures that the request from clients is served by the application server closest to the client. 
-	\item The nature of the workload, as is the case with most caches, is pre-dominantly read requests.
+	\item The nature of the workload, as is the case with most caches, is predominantly read requests.
 	\item The network of nodes is geo-distributed
 	\item Minimal memory usage on each of the nodes is a desirable property
 	\item $\displaystyle size(value) \gg size(key)$
@@ -79,7 +83,7 @@ The following assumptions are made, with respect to the system architecture and 
 
 
 \section{System Architecture}
-This section elaborates on the components the system is comprised of, and explains the points of interaction between them. Figure \ref{fig:sysarch} shows a graphical representation of the architecture.\\
+This section elaborates on the components the system is comprised of, and explains the points of interaction between them. \textbf{Figure \ref{fig:sysarch}} shows a graphical representation of the architecture.\\
 
 \begin{figure*}
 \centering
@@ -91,9 +95,9 @@ This section elaborates on the components the system is comprised of, and explai
 \subsection{Components}
 The components of the architecture are listed below:
 \begin{itemize}
-	\item \textbf{Web service layer:} This layer of abstraction over the ke-value store, is deployed on the application server nodes. It receives requests, reads placement details from the metadata layer and acts accordingly.
+	\item \textbf{Web service layer:} This layer of abstraction over the key-value store, is deployed on the application server nodes. It receives requests, reads placement details from the metadata layer and acts accordingly.
 	\item \textbf{Metadata Layer:} This is a smaller key-value data store for metadata, which is a separate cluster running on the same nodes as the actual key-value stores. It stores the key metadata, like current placement, usage heuristics and recency of access.
-	\item \textbf{Cache Layer:} This is the underlying in-memory datastore which the objects are primarily stored in. There is a single redis instance running on each of the nodes.
+	\item \textbf{Data Layer:} This is the underlying in-memory datastore which the objects are primarily stored in. There is a single redis instance running on each of the nodes.
 	\item \textbf{Placement Daemon:} This continuous process keeps running offline in periodic intervals to repartition the keys, based on the placement strategy described in algorithm \ref{algo-place}.
 \end{itemize}
 
@@ -108,13 +112,13 @@ Component Interaction can be enumerated as below:
 
 
 \section{Key concepts}
-This section contains a description of the key concepts that the dynamic re-partioning strategy, is heavily dependant on, including the `Ownership coefficient' and the data format in which metadata for each key is maintained.
+This section contains a description of the key concepts that the dynamic repartitioning strategy, is heavily dependant on, including the `Ownership coefficient' and the data format in which metadata for each key is maintained.\\
 
 \subsection{Ownership coefficient}
 The ownership coefficient (H) determines which nodes need to have a local copy of the data.\\
 
 During the analysis phase of the data placement daemon, the key usage for each node is calculated using equation \ref{eq:1}:
-\begin{equation*}g(O, x) = count(accesses\ on\ O)\ by\ host\ x \end{equation*}
+\begin{equation*}g(O, x) = count(accesses\ on\ object\ O)\ by\ host\ x \end{equation*}
 \begin{equation} \label{eq:1} f(O,x) = \frac{g(O, x)}{g(O, \forall x)} \end{equation}
 
 If equation \ref{eq:2} holds true, then node `x' is deemed eligible to possess a replicated copy of object O.
@@ -145,10 +149,10 @@ The data object used to store the metadata for each tuple is given below. \texti
 
 
 \section{Algorithmic Approach}
-This section describes the algorithms being used to implement the architecture, including fetching, storing and re-partitioning tuples.\\
+This section describes the algorithms being used to implement the architecture, including fetching, storing and repartitioning tuples.\\
 
 \subsection{Fetching tuples}
-The algorithm to fetch tuples is described in \textbf{Algorithm \ref{algo-fetch}}.\\
+Described in \textbf{Algorithm \ref{algo-fetch}}.\\
 
 \begin{algorithm}
 \KwData{key}
@@ -216,10 +220,10 @@ query metadata data for key;\\
 
 
 \subsection{Storing tuples}
-The algorithm to store tuples is described in \textbf{Algorithm \ref{algo-store}}.\\
+Described in \textbf{Algorithm \ref{algo-store}}.\\
 
-\subsection{Re-partitioning tuples}
-The algorithm to re-partition tuples is described in \textbf{Algorithm \ref{algo-place}}.\\
+\subsection{Repartitioning tuples}
+Described in \textbf{Algorithm \ref{algo-place}}.\\
 
 \begin{algorithm}
 \KwData{master-metadata-host}
@@ -234,6 +238,12 @@ initialize $delete\_hosts$\;
 	$keyaccesses = key.metadata.totalaccesses$\;
 	$current\_hosts = key.metadata.hosts$\;
 	$owner.accessmap = key.metadata.accessmap$\;
+
+	\uIf{$now > (key.metadata.hosts - expirytime)$}{
+		delete $key$ from $current\_hosts$\;
+		delete $key$ from metadata\;
+	}
+
 	\;
 	\For{$hostaccess\_pair \in owner.accessmap$}{
 		$ \displaystyle f = \frac{hostaccess\_pair.accesses}{keyaccesses}$\;
@@ -271,21 +281,23 @@ Each of these nodes contains a deployment setup as follows:
 	\item Redis instance (as the metadata store)
 \end{itemize}
 
-Of these, one of these nodes are randomly configured to be the master propagator, in order to serialize write transactions and ensure correctness of value data across the Redis instances.\\
+Of these, one of these nodes is configured to be the master propagator, in order to serialize write transactions and ensure correctness of value data across the Redis instances.\\
 
 \subsubsection{Placement Infrastructure}
 A single node will be running a continuous execution for RedynisDaemon \cite{redynis-daemon}
 The node's hardware specifications the same as the nodes running the service infrastucture (\ref{Service-Infrastructure}).\\
 
 \subsection{Workloads}
-The YCSB workloads for RESTful web-services is being used to benchmark this experimental setup.\\
+The YCSB workloads for RESTful web-services was used to benchmark this experimental setup.\\
 
 The tests run were permutations of the below configurations:
 
 \begin{itemize}
-	\item  Workload Read requests (\%) ranging from 100 (all reads) to 50 (write-heavy)
-	\item  Uniform key-value access distribution vs Skewed (zipfian) key-value access distribution
+	\item  Workload Read requests (\%) ranging from 100(all reads) to 50(write-heavy)
+	\item  Uniform key-value access distribution vs Skewed key-value access distribution
 \end{itemize}
+
+The uniform distribution workload accesses all the tuples an equal amount of times, whereas the skewed distribution workload accesses is a zipfian distribution that requests 10\% of the data items 90\% of the time.\\
 
 All of the workloads have been run on a uniform set of 1,000,000 total requests. To simulate a widely geo-distributed network of nodes, the incurred latency for making a request to a remote node is set at 100ms\cite{latency-stats}, whereas there is no incurred penalty for making a local request.\\
 
@@ -311,7 +323,7 @@ All of the workloads have been run on a uniform set of 1,000,000 total requests.
 
 The experimental results for uniform distribution of object access and skewed distribution are indicated in \textbf{Figure \ref{fig:res-unif}} and \textbf{Figure \ref{fig:res-skew}} respectively.\\
 
-Each of the bars plotted have additional error bars to indicate the 99\% confidence interval for the distribution across the 3 iterations of the experiment performed. \\
+Each of the bars plotted for throughput have additional error bars to indicate the 99\% confidence interval for the distribution across the multiple iterations of the experiment performed. \\
 
 The different scenarios enumerated in the graphs are described below:
 \begin{itemize}
@@ -320,20 +332,20 @@ The different scenarios enumerated in the graphs are described below:
 	\item \textbf{Optimized:} All requests for keys made are served not available on the local key-value store. However, as the requests keep coming, the usage statistics are logged, and the RedynisDaemon, following the Ownership coefficient policy detailed earlier, replicates the keys to the local key-value store on the fly, to mitigate the penalty incurred by having to make remote requests for a frequently accessed key.
 \end{itemize}
 
-The ideal outcome of the experiment was to prove that the optimized option is a good-enough alternative to a blind global replication of all keys across all nodes in the key-value cluster, and the experimental results corroborate this hypothesis.\\
+The ideal outcome of the experiment was to prove that the optimized option is a good-enough alternative to a blind global replication of all keys across all nodes in the key-value cluster. The experimental results corroborate this hypothesis.\\
 
 
 \section{Conclusions}
 The experimental results point to the hypothesis being proved true. The performance of the system designed for the experiment are almost ten-fold better than the scenario in which all the requests made are re-routed to remote nodes. It is also nearly comparable to the theoretical ideal key-value store that contains all the keys, which could prove to be a helpful alternative to having a fully-replicated Redis cluster.\\
 
-The Redynis system expands the feature set of an already widely used key-value store, and permits usage of a shared-nothing, independent set of Redis nodes as a shared something cluster, to enable intelligent partitioning of data. This is particularly helpful in use-case that require a widely geo-distributed set of key-value store nodes, and there are main memory constraints on the hardware specifications for the nodes the key-value stores are deployed on. The experimental performance . All this is offered while still maintaining strong serializability guarantees for the write operations on the distributed cluster.\\
+The Redynis system expands the feature set of an already widely used key-value store, and permits usage of a shared-nothing, independent set of Redis nodes as a shared something cluster, to enable intelligent partitioning of data. This is particularly helpful in use-cases that require a widely geo-distributed set of key-value store nodes, and there are main memory constraints on the hardware specifications for the nodes the key-value stores are deployed on. The experimental performance is indicative of what the system has to offer. All of the above is offered while still maintaining strong serializability guarantees for the write operations on the distributed cluster.\\
 
 
 \section{Future Work}
 The following are the threads of future work that is envisioned for Redynis:
 
 \begin{itemize}
-	\item The current model doesn't deal well with failures to the master propagator, on which the write serialization depends upon. Future work would primarily be focused on implementing failure handling mechanisms. These mechanisms can be introduced into the existing framework using a heartbeat mechanism to detect when the master propagator goes down, and electing another node to take it's place.
+	\item The current model doesn't deal well with failures to the master propagator, on which the write serialization depends upon. Future work would primarily be focused on implementing failure handling mechanisms. These mechanisms can be introduced into the existing framework using a heartbeat mechanism to detect when the master propagator goes offline, and electing another node to take it's place.
 	\item The data placement strategy that is currently in use is fairly trivial. A more balanced approach can be plugged into RedynisDaemon, in it's stead, for more accurate placement decision strategies.
 	\item The RESTful web-service wrapper in the existing implementation is only responsible to aggregating metrics and directing client requests. It can be extended to form a framework for additional data-collection, which can, in turn be used to build predictive models that can identify patterns in data accesses, and pre-emptively move data based on the features of the model learnt.
 \end{itemize}
